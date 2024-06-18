@@ -1,0 +1,8 @@
+services:
+  my-go-app:
+    image: goombot:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - BOT_AUTH_TOKEN=${BOT_AUTH_TOKEN} #
