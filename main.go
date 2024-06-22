@@ -1,11 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/signal"
 	"slices"
+	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
@@ -13,6 +16,10 @@ import (
 )
 
 var config ConfigSchemaJson
+
+const thumbnailSize = 200
+
+var options = [4]string{"plans", "blockers", "shoutout", "funfact"}
 
 func init() {
 	configTmp, err := createConfig()
@@ -24,6 +31,7 @@ func init() {
 }
 
 func main() {
+	// TODO clean every time errors
 	discord, err := discordgo.New("Bot " + config.Goombot.BotAuthToken)
 	if err != nil {
 		log.Panicln(err)
@@ -72,33 +80,53 @@ func handleStandup(discord *discordgo.Session, interaction *discordgo.Interactio
 		)
 		goombi := config.Goombis[goombiIdx]
 
-		if interaction.Member.User.ID == config.Goombis[1].Id {
-			log.Println("eureka")
+		embed, err := createEmbed(goombi, commandData.Options)
+		if err != nil {
+			log.Panicln(err)
 		}
 
-		embed := createEmbed(goombi, commandData.Options)
-
-		if _, err := discord.ChannelMessageSendEmbed(config.Goombot.StandupChannelId, &embed); err != nil {
-			panic(err)
+		if _, err := discord.ChannelMessageSendEmbed(config.Goombot.StandupChannelId, embed); err != nil {
+			log.Panicln(err)
 		}
 	}
 }
 
-func createEmbed(goombi ConfigSchemaJsonGoombisElem, commandData []*discordgo.ApplicationCommandInteractionDataOption) discordgo.MessageEmbed {
+func createEmbed(goombi ConfigSchemaJsonGoombisElem, commandDataOptions []*discordgo.ApplicationCommandInteractionDataOption) (*discordgo.MessageEmbed, error) {
+	fields := []*discordgo.MessageEmbedField{}
+
+	for _, option := range commandDataOptions {
+		newField := discordgo.MessageEmbedField{}
+		newField.Name = option.Name
+		newField.Value = option.StringValue()
+		fields = append(fields, &newField)
+	}
+
+	colorStr := strings.TrimPrefix(goombi.EmbedColor, "#")
+
+	colorInt, err := strconv.ParseInt(colorStr, 16, 32)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse goombi color: %w", err)
+	}
+
 	embed := discordgo.MessageEmbed{
 		Title:       "Daily Standup",
 		Type:        "rich",
 		Description: "What I'm up to today",
-		Color:       0,
+		Color:       int(colorInt),
+		Thumbnail: &discordgo.MessageEmbedThumbnail{
+			URL:    goombi.ThumbnailUrl,
+			Width:  thumbnailSize,
+			Height: thumbnailSize,
+		},
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     goombi.Url,
 			Name:    goombi.Name,
 			IconURL: "https://picsum.photos/200",
 		},
-		Fields: []*discordgo.MessageEmbedField{{Name: "goombi field", Value: "goombi value", Inline: false}},
+		Fields: fields,
 	}
 
-	return embed
+	return &embed, nil
 }
 
 func createStandupCommand() discordgo.ApplicationCommand {
@@ -109,25 +137,25 @@ func createStandupCommand() discordgo.ApplicationCommand {
 		Options: []*discordgo.ApplicationCommandOption{
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "plans",
+				Name:        options[0],
 				Description: "semicolon (;) separated list of things you want to do",
 				Required:    true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "blockers",
+				Name:        options[1],
 				Description: "semicolon (;) separated list of things blocking you",
 				Required:    true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "shoutout",
+				Name:        options[2],
 				Description: "give someone a shoutout",
 				Required:    false,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "funfact",
+				Name:        options[3],
 				Description: "something you recently learned that's fun!",
 				Required:    false,
 			},
@@ -140,12 +168,12 @@ func createStandupCommand() discordgo.ApplicationCommand {
 func createConfig() (*ConfigSchemaJson, error) {
 	yamlFile, err := os.Open("config.yaml")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open config file: %w", err)
 	}
 
 	byteValue, err := io.ReadAll(yamlFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed reading byte value: %w", err)
 	}
 
 	yamlFile.Close()
@@ -154,5 +182,6 @@ func createConfig() (*ConfigSchemaJson, error) {
 	if err := yaml.Unmarshal(byteValue, &config); err != nil {
 		log.Fatalln(err)
 	}
+
 	return &config, nil
 }

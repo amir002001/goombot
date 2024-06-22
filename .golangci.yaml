@@ -12,3 +12,4 @@ linters:
     - exhaustruct
     - gochecknoinits
     - gochecknoglobals
+    - err113
