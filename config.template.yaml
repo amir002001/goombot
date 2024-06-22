@@ -1,0 +1,13 @@
+goombot:
+  bot_auth_token: "example_auth_token"
+  guild_id: "sample guild ID"
+  standup_channel_id: "sample standup channel ID"
+goombis:
+  - name: sample name
+    thumbnail_url: "https://picsum.photos/200"
+    embed_color: "#FFFFFF"
+    url: "https://sample.com"
+  - name: sample name
+    thumbnail_url: "https://picsum.photos/200"
+    embed_color: "#FFFFFF"
+    url: "https://sample.com"

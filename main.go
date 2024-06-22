@@ -33,22 +33,7 @@ func main() {
 
 	discord.AddHandler(handleStandup)
 
-	standupCommand := discordgo.ApplicationCommand{
-		ID:                       "",
-		ApplicationID:            "",
-		GuildID:                  guildID,
-		Version:                  "",
-		Type:                     0,
-		Name:                     "standup",
-		NameLocalizations:        &map[discordgo.Locale]string{},
-		DefaultPermission:        new(bool),
-		DefaultMemberPermissions: new(int64),
-		DMPermission:             new(bool),
-		NSFW:                     new(bool),
-		Description:              "what are you upto today!?",
-		DescriptionLocalizations: &map[discordgo.Locale]string{},
-		Options:                  []*discordgo.ApplicationCommandOption{},
-	}
+	standupCommand := createStandupCommand()
 
 	ccmd, err := discord.ApplicationCommandCreate(discord.State.User.ID, guildID, &standupCommand)
 	if err != nil {
@@ -59,57 +44,77 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
 
-	log.Println("Removing commands...")
-
-	if err := discord.ApplicationCommandDelete(discord.State.User.ID, guildID, standupCommand.ID); err != nil {
-		log.Panicf("Cannot delete '%v' command: %v", ccmd.Name, err)
-	}
+	cleanUp(ccmd, guildID, discord)
 
 	discord.Close()
 }
 
+func cleanUp(ccmd *discordgo.ApplicationCommand, guildID string, discord *discordgo.Session) {
+	log.Println("Removing commands...")
+
+	if err := discord.ApplicationCommandDelete(discord.State.User.ID, guildID, ccmd.ID); err != nil {
+		log.Panicf("Cannot delete '%v' command: %v", ccmd.Name, err)
+	}
+}
+
 func handleStandup(discord *discordgo.Session, i *discordgo.InteractionCreate) {
 	if i.ApplicationCommandData().Name == "standup" {
-		embed := discordgo.MessageEmbed{
-			URL:         "https://goombi.com",
-			Type:        "rich",
-			Title:       "hello goombi",
-			Description: "goombster",
-			Timestamp:   "",
-			Color:       0,
-			Footer: &discordgo.MessageEmbedFooter{
-				Text:         "",
-				IconURL:      "",
-				ProxyIconURL: "",
-			},
-			Image: &discordgo.MessageEmbedImage{
-				URL:      "",
-				ProxyURL: "",
-				Width:    0,
-				Height:   0,
-			},
-			Thumbnail: &discordgo.MessageEmbedThumbnail{
-				URL:      "",
-				ProxyURL: "",
-				Width:    0,
-				Height:   0,
-			},
-			Video: nil,
-			Provider: &discordgo.MessageEmbedProvider{
-				URL:  "",
-				Name: "",
-			},
-			Author: &discordgo.MessageEmbedAuthor{
-				URL:          "https://amir.day",
-				Name:         "Amir Azizafshari",
-				IconURL:      "https://picsum.photos/200",
-				ProxyIconURL: "",
-			},
-			Fields: []*discordgo.MessageEmbedField{{Name: "goombi field", Value: "goombi value", Inline: false}},
-		}
-
+		embed := createEmbed()
 		if _, err := discord.ChannelMessageSendEmbed("1217489307431075991", &embed); err != nil {
 			panic(err)
 		}
 	}
+}
+
+func createEmbed() discordgo.MessageEmbed {
+	embed := discordgo.MessageEmbed{
+		Title:       "hello goombi",
+		Type:        "rich",
+		Description: "goombster",
+		Color:       0,
+		Author: &discordgo.MessageEmbedAuthor{
+			URL:     "https://amir.day",
+			Name:    "Amir Azizafshari",
+			IconURL: "https://picsum.photos/200",
+		},
+		Fields: []*discordgo.MessageEmbedField{{Name: "goombi field", Value: "goombi value", Inline: false}},
+	}
+
+	return embed
+}
+
+func createStandupCommand() discordgo.ApplicationCommand {
+	standupCommand := discordgo.ApplicationCommand{
+		Type:        discordgo.ChatApplicationCommand,
+		Name:        "standup",
+		Description: "what are you upto today!?",
+		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "plans",
+				Description: "semicolon (;) separated list of things you want to do",
+				Required:    true,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "blockers",
+				Description: "semicolon (;) separated list of things blocking you",
+				Required:    true,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "shoutout",
+				Description: "give someone a shoutout",
+				Required:    false,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "fun fact",
+				Description: "something you recently learned that's fun!",
+				Required:    false,
+			},
+		},
+	}
+
+	return standupCommand
 }
