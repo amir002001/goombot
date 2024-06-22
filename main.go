@@ -1,28 +1,32 @@
 package main
 
 import (
+	"io"
 	"log"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
+	"gopkg.in/yaml.v3"
 )
 
-func main() {
-	guildID, exists := os.LookupEnv("GUILD_ID")
-	if !exists {
-		log.Fatalln("GUILD_ID missing from environment")
-	}
+var config ConfigSchemaJson
 
-	botToken, exists := os.LookupEnv("BOT_AUTH_TOKEN")
-	if !exists {
-		log.Fatalln("BOT_AUTH_TOKEN missing from environment")
-	}
-
-	discord, err := discordgo.New("Bot " + botToken)
+func init() {
+	configTmp, err := createConfig()
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
+	}
+
+	config = *configTmp
+}
+
+func main() {
+	discord, err := discordgo.New("Bot " + config.Goombot.BotAuthToken)
+	if err != nil {
+		log.Panicln(err)
 	}
 
 	log.Println("opening connection...")
@@ -35,7 +39,7 @@ func main() {
 
 	standupCommand := createStandupCommand()
 
-	ccmd, err := discord.ApplicationCommandCreate(discord.State.User.ID, guildID, &standupCommand)
+	ccmd, err := discord.ApplicationCommandCreate(discord.State.User.ID, config.Goombot.GuildId, &standupCommand)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -44,7 +48,7 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
 
-	cleanUp(ccmd, guildID, discord)
+	cleanUp(ccmd, config.Goombot.GuildId, discord)
 
 	discord.Close()
 }
@@ -57,24 +61,38 @@ func cleanUp(ccmd *discordgo.ApplicationCommand, guildID string, discord *discor
 	}
 }
 
-func handleStandup(discord *discordgo.Session, i *discordgo.InteractionCreate) {
-	if i.ApplicationCommandData().Name == "standup" {
-		embed := createEmbed()
-		if _, err := discord.ChannelMessageSendEmbed("1217489307431075991", &embed); err != nil {
+func handleStandup(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
+	commandData := interaction.ApplicationCommandData()
+	if commandData.Name == "standup" {
+		goombiIdx := slices.IndexFunc(
+			config.Goombis,
+			func(c ConfigSchemaJsonGoombisElem) bool {
+				return c.Id == interaction.Member.User.ID
+			},
+		)
+		goombi := config.Goombis[goombiIdx]
+
+		if interaction.Member.User.ID == config.Goombis[1].Id {
+			log.Println("eureka")
+		}
+
+		embed := createEmbed(goombi, commandData.Options)
+
+		if _, err := discord.ChannelMessageSendEmbed(config.Goombot.StandupChannelId, &embed); err != nil {
 			panic(err)
 		}
 	}
 }
 
-func createEmbed() discordgo.MessageEmbed {
+func createEmbed(goombi ConfigSchemaJsonGoombisElem, commandData []*discordgo.ApplicationCommandInteractionDataOption) discordgo.MessageEmbed {
 	embed := discordgo.MessageEmbed{
-		Title:       "hello goombi",
+		Title:       "Daily Standup",
 		Type:        "rich",
-		Description: "goombster",
+		Description: "What I'm up to today",
 		Color:       0,
 		Author: &discordgo.MessageEmbedAuthor{
-			URL:     "https://amir.day",
-			Name:    "Amir Azizafshari",
+			URL:     goombi.Url,
+			Name:    goombi.Name,
 			IconURL: "https://picsum.photos/200",
 		},
 		Fields: []*discordgo.MessageEmbedField{{Name: "goombi field", Value: "goombi value", Inline: false}},
@@ -109,7 +127,7 @@ func createStandupCommand() discordgo.ApplicationCommand {
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "fun fact",
+				Name:        "funfact",
 				Description: "something you recently learned that's fun!",
 				Required:    false,
 			},
@@ -117,4 +135,24 @@ func createStandupCommand() discordgo.ApplicationCommand {
 	}
 
 	return standupCommand
+}
+
+func createConfig() (*ConfigSchemaJson, error) {
+	yamlFile, err := os.Open("config.yaml")
+	if err != nil {
+		return nil, err
+	}
+
+	byteValue, err := io.ReadAll(yamlFile)
+	if err != nil {
+		return nil, err
+	}
+
+	yamlFile.Close()
+
+	var config ConfigSchemaJson
+	if err := yaml.Unmarshal(byteValue, &config); err != nil {
+		log.Fatalln(err)
+	}
+	return &config, nil
 }
