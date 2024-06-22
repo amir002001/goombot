@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "goombot": {
+      "type": "object",
+      "properties": {
+        "bot_auth_token": {
+          "type": "string"
+        },
+        "guild_id": {
+          "type": "string"
+        },
+        "standup_channel_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "bot_auth_token",
+        "guild_id",
+        "standup_channel_id"
+      ],
+      "additionalProperties": false
+    },
+    "goombis": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "thumbnail_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "embed_color": {
+            "type": "string",
+            "pattern": "^#([A-Fa-f0-9]{6})$"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "name",
+          "thumbnail_url",
+          "id",
+          "embed_color",
+          "url"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "goombot",
+    "goombis"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,15 @@
+linters-settings:
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - style
+linters:
+  enable-all: true
+  disable:
+    - depguard
+    - exhaustruct
+    - gochecknoinits
+    - gochecknoglobals
+    - err113
