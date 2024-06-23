@@ -19,7 +19,17 @@ var config ConfigSchemaJson
 
 const thumbnailSize = 200
 
-var options = [4]string{"plans", "blockers", "shoutout", "funfact"}
+var standUpOptions = struct {
+	Plans    string
+	Blockers string
+	ShoutOut string
+	FunFact  string
+}{
+	Plans:    "plans",
+	Blockers: "blockers",
+	ShoutOut: "shoutout",
+	FunFact:  "funfact",
+}
 
 func init() {
 	configTmp, err := createConfig()
@@ -95,10 +105,41 @@ func createEmbed(goombi ConfigSchemaJsonGoombisElem, commandDataOptions []*disco
 	fields := []*discordgo.MessageEmbedField{}
 
 	for _, option := range commandDataOptions {
-		newField := discordgo.MessageEmbedField{}
-		newField.Name = option.Name
-		newField.Value = option.StringValue()
-		fields = append(fields, &newField)
+		stringBuilder := strings.Builder{}
+		field := discordgo.MessageEmbedField{}
+
+		switch option.Name {
+		case standUpOptions.Plans:
+			field.Name = "Plans"
+			plans := strings.Split(option.StringValue(), ";")
+
+			for _, plan := range plans {
+				stringBuilder.WriteString(fmt.Sprintf("* %s\n", plan))
+			}
+
+			field.Value = stringBuilder.String()
+
+		case standUpOptions.Blockers:
+			field.Name = "Blockers"
+			blockers := strings.Split(option.StringValue(), ";")
+
+			for _, blocker := range blockers {
+				stringBuilder.WriteString(fmt.Sprintf("* %s\n", blocker))
+			}
+
+			field.Value = stringBuilder.String()
+
+		case standUpOptions.FunFact:
+			field.Name = "Fun Fact"
+			field.Value = option.StringValue()
+		case standUpOptions.ShoutOut:
+			field.Name = "Shoutout"
+			field.Value = option.StringValue()
+		default:
+			return nil, fmt.Errorf("cannot find valid option name %s", option.Name)
+		}
+
+		fields = append(fields, &field)
 	}
 
 	colorStr := strings.TrimPrefix(goombi.EmbedColor, "#")
@@ -109,19 +150,13 @@ func createEmbed(goombi ConfigSchemaJsonGoombisElem, commandDataOptions []*disco
 	}
 
 	embed := discordgo.MessageEmbed{
-		Title:       "Daily Standup",
-		Type:        "rich",
-		Description: "What I'm up to today",
-		Color:       int(colorInt),
-		Thumbnail: &discordgo.MessageEmbedThumbnail{
-			URL:    goombi.ThumbnailUrl,
-			Width:  thumbnailSize,
-			Height: thumbnailSize,
-		},
+		Title: "Daily Standup",
+		Type:  "rich",
+		Color: int(colorInt),
 		Author: &discordgo.MessageEmbedAuthor{
 			URL:     goombi.Url,
 			Name:    goombi.Name,
-			IconURL: "https://picsum.photos/200",
+			IconURL: goombi.ThumbnailUrl,
 		},
 		Fields: fields,
 	}
@@ -137,25 +172,25 @@ func createStandupCommand() discordgo.ApplicationCommand {
 		Options: []*discordgo.ApplicationCommandOption{
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        options[0],
+				Name:        standUpOptions.Plans,
 				Description: "semicolon (;) separated list of things you want to do",
 				Required:    true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        options[1],
+				Name:        standUpOptions.Blockers,
 				Description: "semicolon (;) separated list of things blocking you",
 				Required:    true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        options[2],
+				Name:        standUpOptions.Blockers,
 				Description: "give someone a shoutout",
 				Required:    false,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        options[3],
+				Name:        standUpOptions.FunFact,
 				Description: "something you recently learned that's fun!",
 				Required:    false,
 			},
