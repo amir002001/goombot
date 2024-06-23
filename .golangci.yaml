@@ -13,3 +13,5 @@ linters:
     - gochecknoinits
     - gochecknoglobals
     - err113
+    - lll
+    - funlen
