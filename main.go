@@ -17,8 +17,6 @@ import (
 
 var config ConfigSchemaJson
 
-const thumbnailSize = 200
-
 var standUpOptions = struct {
 	Plans    string
 	Blockers string
@@ -184,7 +182,7 @@ func createStandupCommand() discordgo.ApplicationCommand {
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        standUpOptions.Blockers,
+				Name:        standUpOptions.ShoutOut,
 				Description: "give someone a shoutout",
 				Required:    false,
 			},
