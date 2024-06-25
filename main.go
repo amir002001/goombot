@@ -166,7 +166,7 @@ func createStandupCommand() discordgo.ApplicationCommand {
 	standupCommand := discordgo.ApplicationCommand{
 		Type:        discordgo.ChatApplicationCommand,
 		Name:        "standup",
-		Description: "what are you upto today!?",
+		Description: "what are you up to today!?",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
