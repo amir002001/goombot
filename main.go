@@ -39,7 +39,6 @@ func init() {
 }
 
 func main() {
-	// TODO clean every time errors
 	discord, err := discordgo.New("Bot " + config.Goombot.BotAuthToken)
 	if err != nil {
 		log.Panicln(err)
@@ -93,7 +92,13 @@ func handleStandup(discord *discordgo.Session, interaction *discordgo.Interactio
 			log.Panicln(err)
 		}
 
-		if _, err := discord.ChannelMessageSendEmbed(config.Goombot.StandupChannelId, embed); err != nil {
+		interactionResponse := discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Embeds: []*discordgo.MessageEmbed{embed},
+			},
+		}
+		if err := discord.InteractionRespond(interaction.Interaction, &interactionResponse); err != nil {
 			log.Panicln(err)
 		}
 	}
